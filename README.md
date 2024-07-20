@@ -1,15 +1,8 @@
-# Hyperborea
+# Hyperborealib
 
-A highly experimental decentralized network protocol.
+Library that implements the protocol and some important components needed for applications development.
 
-Some details can be found in [paper](paper.md).
+This library provides relatively low-level types. It's better to use hyperelm for software development instead.
 
-| Project | Description |
-| - | - |
-| [hyperborealib](./hyperborealib) | Library implementing the protocol and all the related structs and components |
-| [hyperborea-server](./hyperborea-server) | Background daemon |
-| [hyperbox](./hyperbox) | Network analysis toolkit |
-| [hyperbox](./hyperbox) | Elm-inspired high-level abstraction over the hyperborealib intended for applications development |
-| [hyperchat](./hyperchat) | Example chat application |
-
-Author: [Nikita Podvirnyi](https://github.com/krypt0nn)
+Author: [Nikita Podvirnyi](https://github.com/krypt0nn)\
+Licensed under [AGPL-3.0](LICENSE)
