@@ -1,9 +1,0 @@
-{
-    "rust-analyzer.showUnlinkedFileNotification": false,
-    "conventionalCommits.scopes": [
-        "hyperborealib",
-        "hyperbox",
-        "hyperchat",
-        "hyperelm"
-    ]
-}
