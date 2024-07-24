@@ -169,10 +169,10 @@ mod tests {
             .join("global-table-router-test");
 
         if temp.exists() {
-            std::fs::remove_dir_all(&temp)?;
+            tokio::fs::remove_dir_all(&temp).await?;
         }
 
-        std::fs::create_dir(&temp)?;
+        tokio::fs::create_dir(&temp).await?;
 
         let table = GlobalTableRouter::new(&temp).await?;
 

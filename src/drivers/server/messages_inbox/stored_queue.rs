@@ -152,3 +152,77 @@ impl MessagesInbox for StoredQueueMessagesInbox {
         Ok((vec![], 0))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::rest_api::types::client::tests::get_client;
+    use crate::rest_api::types::server::tests::get_server;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn send_poll() -> Result<(), Error> {
+        let temp = std::env::temp_dir()
+            .join("stored-queue-messages-inbox-test");
+
+        if temp.exists() {
+            tokio::fs::remove_dir_all(&temp).await?;
+        }
+
+        tokio::fs::create_dir(&temp).await?;
+
+        let queue = StoredQueueMessagesInbox::new(&temp).await?;
+
+        let sender_secret = SecretKey::random();
+        let receiver_secret = SecretKey::random();
+
+        let sender = Sender::new(get_client(), get_server());
+        let receiver = get_client();
+
+        let mut messages = Vec::with_capacity(5);
+
+        for message in [b"message 1", b"message 2", b"message 3", b"message 4", b"message 5"] {
+            let message = Message::create(
+                &sender_secret,
+                &receiver.public_key,
+                message,
+                MessageEncoding::default(),
+                CompressionLevel::default()
+            ).unwrap();
+
+            messages.push(message.clone());
+
+            queue.add_message(
+                sender.clone(),
+                receiver_secret.public_key(),
+                String::from("default channel"),
+                message
+            ).await?;
+        }
+
+        assert_eq!(queue.poll_messages(receiver_secret.public_key(), String::from("random channel"), None).await?, (vec![], 0));
+        assert_eq!(queue.poll_messages(receiver_secret.public_key(), String::from("random channel"), Some(100)).await?, (vec![], 0));
+
+        let (poll, 4) = queue.poll_messages(receiver_secret.public_key(), String::from("default channel"), Some(1)).await? else {
+            panic!("Test 1 failed");
+        };
+
+        assert_eq!(poll[0].message.read(&receiver_secret, &sender_secret.public_key()).unwrap(), b"message 1");
+
+        let (poll, 2) = queue.poll_messages(receiver_secret.public_key(), String::from("default channel"), Some(2)).await? else {
+            panic!("Test 2 failed");
+        };
+
+        assert_eq!(poll[0].message.read(&receiver_secret, &sender_secret.public_key()).unwrap(), b"message 2");
+        assert_eq!(poll[1].message.read(&receiver_secret, &sender_secret.public_key()).unwrap(), b"message 3");
+
+        let (poll, 0) = queue.poll_messages(receiver_secret.public_key(), String::from("default channel"), None).await? else {
+            panic!("Test 3 failed");
+        };
+
+        assert_eq!(poll[0].message.read(&receiver_secret, &sender_secret.public_key()).unwrap(), b"message 4");
+        assert_eq!(poll[1].message.read(&receiver_secret, &sender_secret.public_key()).unwrap(), b"message 5");
+
+        Ok(())
+    }
+}
