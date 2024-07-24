@@ -7,14 +7,14 @@
 //! 
 //! | Pattern                            | Meaning                  |
 //! | ---------------------------------- | ------------------------ |
-//! | `hyperborea://<public key>`        | Hyperborea thin client   |
+//! | `hyperborea://<public key>`        | Hyperborea client        |
 //! | `hyperborea-client://<public key>` | Hyperborea thin client   |
 //! | `hyperborea-server://<public key>` | Hyperborea server client |
 //! | `hyperborea-file://<public key>  ` | Hyperborea file client   |
-//! | `hyp://<public key>`               | Hyperborea thin client   |
+//! | `hyp://<public key>`               | Hyperborea client        |
 //! | `hyp-client://<public key>`        | Hyperborea thin client   |
 //! | `hyp-server://<public key>`        | Hyperborea server client |
-//! | `hyp-file://<public key>`          | Hyperborea file client |
+//! | `hyp-file://<public key>`          | Hyperborea file client   |
 //! | `hyperborea://thin:<public key>`   | Hyperborea thin client   |
 //! | `hyperborea://thick:<public key>`  | Hyperborea thick client  |
 //! | `hyperborea://server:<public key>` | Hyperborea server client |
@@ -25,7 +25,7 @@
 use std::str::FromStr;
 
 use crate::crypto::prelude::*;
-use crate::rest_api::types::ClientType;
+use crate::rest_api::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Address {
@@ -40,7 +40,7 @@ pub enum Address {
     /// - `hyp-file://<public key>`
     Hyperborea {
         public_key: PublicKey,
-        client_type: ClientType
+        client_type: Option<ClientType>
     },
 
     /// HTTP server.
@@ -78,52 +78,52 @@ impl FromStr for Address {
                 if let Some(address) = address.strip_prefix("thin:") {
                     Ok(Self::Hyperborea {
                         public_key: PublicKey::from_base64(address)?,
-                        client_type: ClientType::Thin
+                        client_type: Some(ClientType::Thin)
                     })
                 }
 
                 else if let Some(address) = address.strip_prefix("thick:") {
                     Ok(Self::Hyperborea {
                         public_key: PublicKey::from_base64(address)?,
-                        client_type: ClientType::Thick
+                        client_type: Some(ClientType::Thick)
                     })
                 }
 
                 else if let Some(address) = address.strip_prefix("server:") {
                     Ok(Self::Hyperborea {
                         public_key: PublicKey::from_base64(address)?,
-                        client_type: ClientType::Server
+                        client_type: Some(ClientType::Server)
                     })
                 }
 
                 else if let Some(address) = address.strip_prefix("file:") {
                     Ok(Self::Hyperborea {
                         public_key: PublicKey::from_base64(address)?,
-                        client_type: ClientType::File
+                        client_type: Some(ClientType::File)
                     })
                 }
 
                 else {
                     Ok(Self::Hyperborea {
                         public_key: PublicKey::from_base64(&address)?,
-                        client_type: ClientType::Thin
+                        client_type: None
                     })
                 }
             }
 
             "hyperborea-client" | "hyp-client" => Ok(Self::Hyperborea {
                 public_key: PublicKey::from_base64(&address)?,
-                client_type: ClientType::Thin
+                client_type: Some(ClientType::Thin)
             }),
 
             "hyperborea-server" | "hyp-server" => Ok(Self::Hyperborea {
                 public_key: PublicKey::from_base64(&address)?,
-                client_type: ClientType::Server
+                client_type: Some(ClientType::Server)
             }),
 
             "hyperborea-file" | "hyp-file" => Ok(Self::Hyperborea {
                 public_key: PublicKey::from_base64(&address)?,
-                client_type: ClientType::File
+                client_type: Some(ClientType::File)
             }),
 
             "http" => Ok(Self::Http {
@@ -161,7 +161,7 @@ mod tests {
         for protocol in ["hyperborea", "hyp"] {
             assert_eq!(parse_uri(format!("{protocol}://{}", public_key.to_base64()))?, Address::Hyperborea {
                 public_key: public_key.clone(),
-                client_type: ClientType::Thin
+                client_type: None
             });
         }
 
@@ -169,7 +169,7 @@ mod tests {
             for client_type in ["thin", "thick", "server", "file"] {
                 assert_eq!(parse_uri(format!("{protocol}://{client_type}:{}", public_key.to_base64()))?, Address::Hyperborea {
                     public_key: public_key.clone(),
-                    client_type: ClientType::from_str(client_type).unwrap()
+                    client_type: ClientType::from_str(client_type).ok()
                 });
             }
         }
@@ -177,21 +177,21 @@ mod tests {
         for protocol in ["hyperborea-client", "hyp-client"] {
             assert_eq!(parse_uri(format!("{protocol}://{}", public_key.to_base64()))?, Address::Hyperborea {
                 public_key: public_key.clone(),
-                client_type: ClientType::Thin
+                client_type: Some(ClientType::Thin)
             });
         }
 
         for protocol in ["hyperborea-server", "hyp-server"] {
             assert_eq!(parse_uri(format!("{protocol}://{}", public_key.to_base64()))?, Address::Hyperborea {
                 public_key: public_key.clone(),
-                client_type: ClientType::Server
+                client_type: Some(ClientType::Server)
             });
         }
 
         for protocol in ["hyperborea-file", "hyp-file"] {
             assert_eq!(parse_uri(format!("{protocol}://{}", public_key.to_base64()))?, Address::Hyperborea {
                 public_key: public_key.clone(),
-                client_type: ClientType::File
+                client_type: Some(ClientType::File)
             });
         }
 
