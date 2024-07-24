@@ -31,10 +31,12 @@ full = [
     "inbox-stored-queue"
 ]
 
-default = [
-    "serde",
-    "tracing"
-]
+# default = [
+#     "serde",
+#     "tracing"
+# ]
+
+default = ["full"]
 
 [dependencies]
 thiserror = "1.0"
