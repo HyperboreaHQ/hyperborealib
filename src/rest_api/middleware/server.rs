@@ -316,18 +316,25 @@ where
                 }
 
                 // Add message to the inbox
-                driver.messages_inbox().add_message(
+                let result = driver.messages_inbox().add_message(
                     request.0.request.sender,
                     request.0.request.receiver_public,
                     request.0.request.channel,
                     request.0.request.message
                 ).await;
 
-                SendResponse::success(
-                    ResponseStatus::Success,
-                    &driver.params().secret_key,
-                    request.0.proof_seed
-                )
+                match result {
+                    Ok(()) => SendResponse::success(
+                        ResponseStatus::Success,
+                        &driver.params().secret_key,
+                        request.0.proof_seed
+                    ),
+
+                    Err(err) => SendResponse::error(
+                        ResponseStatus::ServerError,
+                        format!("Failed to index message: {err}")
+                    )
+                }
             }
         }).await;
 
@@ -357,18 +364,25 @@ where
                 }
 
                 // Poll messages from the inbox
-                let (messages, remaining) = driver.messages_inbox().poll_messages(
+                let messages = driver.messages_inbox().poll_messages(
                     request.0.public_key,
                     request.0.request.channel,
                     request.0.request.limit
                 ).await;
 
-                PollResponse::success(
-                    ResponseStatus::Success,
-                    &driver.params().secret_key,
-                    request.0.proof_seed,
-                    PollResponseBody::new(messages, remaining)
-                )
+                match messages {
+                    Ok((messages, remaining)) => PollResponse::success(
+                        ResponseStatus::Success,
+                        &driver.params().secret_key,
+                        request.0.proof_seed,
+                        PollResponseBody::new(messages, remaining)
+                    ),
+
+                    Err(err) => PollResponse::error(
+                        ResponseStatus::ServerError,
+                        format!("Failed to poll messages: {err}")
+                    )
+                }
             }
         }).await;
 
