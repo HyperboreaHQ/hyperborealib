@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use std::collections::{HashSet, VecDeque};
 
@@ -10,6 +11,8 @@ use crate::rest_api::prelude::{
     Client as ClientApiRecord,
     Server as ServerApiRecord
 };
+
+use crate::address::Address;
 
 use super::Error;
 
@@ -272,7 +275,7 @@ impl<T: HttpClient> ConnectedClient<T> {
     /// 
     /// - `server` should contain address of the server
     ///   you want to announce about the current client.
-    pub async fn announce(&self, server: impl std::fmt::Display) -> Result<(), Error> {
+    pub async fn announce(&self, server: impl AsRef<str>) -> Result<(), Error> {
         #[cfg(feature = "tracing")]
         tracing::debug!("Sending POST /api/v1/announce request");
 
@@ -284,12 +287,52 @@ impl<T: HttpClient> ConnectedClient<T> {
         );
 
         let proof_seed = request.0.proof_seed;
+        let server_address = server.as_ref();
 
-        // Send request
-        let response = self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
-            format!("http://{server}/api/v1/announce"),
-            request
-        ).await?;
+        // Send request to resolved address
+        let response = match Address::from_str(server_address)? {
+            Address::Hyperborea { public_key, client_type } => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!("Resolving hyperborea DNS address");
+
+                match self.lookup(public_key, client_type).await? {
+                    Some((_, server, _)) => {
+                        self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
+                            format!("http://{}/api/v1/announce", server.address),
+                            request
+                        ).await?
+                    }
+
+                    None => {
+                        return Err(Error::RequestFailed {
+                            status: ResponseStatus::ClientNotFound,
+                            reason: format!("Failed to resolve address: {server_address}")
+                        });
+                    }
+                }
+            }
+
+            Address::Http { address } => {
+                self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
+                    format!("http://{address}/api/v1/announce"),
+                    request
+                ).await?
+            }
+
+            Address::Https { address } => {
+                self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
+                    format!("https://{address}/api/v1/announce"),
+                    request
+                ).await?
+            }
+
+            Address::Raw(address) => {
+                self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
+                    format!("{address}/api/v1/announce"),
+                    request
+                ).await?
+            }
+        };
 
         // Validate response
         if !response.validate(proof_seed)? {
