@@ -1,4 +1,5 @@
 pub mod time;
+pub mod address;
 pub mod crypto;
 pub mod http;
 pub mod drivers;
