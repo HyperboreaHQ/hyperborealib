@@ -70,8 +70,8 @@ impl Router for GlobalTableRouter {
 
         let record = json!({
             "indexed_at": timestamp(),
-            "client": client,
-            "server": server
+            "client": client.to_json()?,
+            "server": server.to_json()?
         });
 
         tokio::fs::write(path, serde_json::to_vec(&record)?).await?;
