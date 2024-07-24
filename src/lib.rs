@@ -36,5 +36,10 @@ pub mod prelude {
     pub use super::time::*;
     pub use super::http::*;
 
+    pub use super::address::{
+        Address,
+        parse as parse_uri
+    };
+
     pub use super::impl_as_json;
 }
