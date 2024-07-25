@@ -2,6 +2,7 @@ pub mod time;
 pub mod address;
 pub mod crypto;
 pub mod http;
+pub mod port_forward;
 pub mod drivers;
 pub mod rest_api;
 
