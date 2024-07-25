@@ -16,6 +16,9 @@ tracing = ["dep:tracing"]
 client-reqwest = ["dep:reqwest"]
 server-axum = ["dep:axum", "dep:tokio"]
 
+# Port forwarding implementations
+port-forward-upnp = ["dep:easy-upnp"]
+
 # Server backends traits implementation
 router-global-table = ["dep:tokio", "tokio/fs"]
 traversal-bfs-recursion = []
@@ -24,8 +27,12 @@ inbox-stored-queue = ["dep:tokio", "tokio/fs"]
 full = [
     "serde",
     "tracing",
+
     "client-reqwest",
     "server-axum",
+
+    "port-forward-upnp",
+
     "router-global-table",
     "traversal-bfs-recursion",
     "inbox-stored-queue"
@@ -54,7 +61,7 @@ base64 = "0.22"
 tracing = { version = "0.1", optional = true }
 
 # UPnP port forwarding
-easy-upnp = "0.2.0"
+easy-upnp = { version = "0.2.0", optional = true }
 
 # Messages encryption
 aes-gcm = { version = "0.10", features = ["std"] }

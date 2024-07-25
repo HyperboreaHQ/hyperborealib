@@ -1,7 +1,9 @@
 use std::time::Duration;
 
+#[cfg(feature = "port-forward-upnp")]
 mod upnp;
 
+#[cfg(feature = "port-forward-upnp")]
 pub use upnp::UpnpPortForwarder;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

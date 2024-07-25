@@ -36,6 +36,7 @@ pub mod prelude {
 
     pub use super::time::*;
     pub use super::http::*;
+    pub use super::port_forward::*;
 
     pub use super::address::{
         Address,
