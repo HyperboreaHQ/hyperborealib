@@ -38,7 +38,8 @@ pub mod prelude {
 
     pub use super::address::{
         Address,
-        parse as parse_uri
+        parse as parse_uri,
+        resolve as resolve_uri
     };
 
     pub use super::impl_as_json;
