@@ -5,7 +5,7 @@ use easy_upnp::*;
 
 use super::*;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct UpnpPortForwarder {
     forwarded: Mutex<HashMap<(u16, Protocol), UpnpConfig>>
 }
@@ -31,7 +31,10 @@ impl PortForwarder for UpnpPortForwarder {
             Protocol::TCP => PortMappingProtocol::TCP,
             Protocol::UDP => PortMappingProtocol::UDP,
 
-            Protocol::Both => return Ok(self.open(port, Protocol::TCP, duration).await? && self.open(port, Protocol::UDP, duration).await?)
+            Protocol::Both => return Ok(
+                self.open(port, Protocol::TCP, duration).await? &&
+                self.open(port, Protocol::UDP, duration).await?
+            )
         };
 
         add_ports([Self::build_config(port, upnp_protocol, duration)])
