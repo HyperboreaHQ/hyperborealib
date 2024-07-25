@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 use std::collections::{HashSet, VecDeque};
 
@@ -12,7 +11,7 @@ use crate::rest_api::prelude::{
     Server as ServerApiRecord
 };
 
-use crate::address::Address;
+use crate::address::resolve as resolve_uri;
 
 use super::Error;
 
@@ -287,52 +286,12 @@ impl<T: HttpClient> ConnectedClient<T> {
         );
 
         let proof_seed = request.0.proof_seed;
-        let server_address = server.as_ref();
 
         // Send request to resolved address
-        let response = match Address::from_str(server_address)? {
-            Address::Hyperborea { public_key, client_type } => {
-                #[cfg(feature = "tracing")]
-                tracing::debug!("Resolving hyperborea DNS address");
-
-                match self.lookup(public_key, client_type).await? {
-                    Some((_, server, _)) => {
-                        self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
-                            format!("http://{}/api/v1/announce", server.address),
-                            request
-                        ).await?
-                    }
-
-                    None => {
-                        return Err(Error::RequestFailed {
-                            status: ResponseStatus::ClientNotFound,
-                            reason: format!("Failed to resolve address: {server_address}")
-                        });
-                    }
-                }
-            }
-
-            Address::Http { address } => {
-                self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
-                    format!("http://{address}/api/v1/announce"),
-                    request
-                ).await?
-            }
-
-            Address::Https { address } => {
-                self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
-                    format!("https://{address}/api/v1/announce"),
-                    request
-                ).await?
-            }
-
-            Address::Raw(address) => {
-                self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
-                    format!("{address}/api/v1/announce"),
-                    request
-                ).await?
-            }
-        };
+        let response = self.http_client.post_request::<AnnounceRequest, AnnounceResponse>(
+            format!("{}/api/v1/announce", resolve_uri(server, self).await?),
+            request
+        ).await?;
 
         // Validate response
         if !response.validate(proof_seed)? {
@@ -379,6 +338,7 @@ impl<T: HttpClient> ConnectedClient<T> {
         let proof_seed = request.0.proof_seed;
 
         // Queue of search hints
+        // We don't need to resolve our local server's address
         let mut queue = VecDeque::from([
             self.connected_server.address.clone()
         ]);
@@ -397,7 +357,8 @@ impl<T: HttpClient> ConnectedClient<T> {
 
             // Send lookup request
             let response = self.http_client.post_request::<LookupRequest, LookupResponse>(
-                format!("http://{server_address}/api/v1/lookup"),
+                // FIXME: causes some weird ass issue with "infinite async recursion"
+                format!("http://{server_address}/api/v1/lookup"), // resolve_uri(&server_address, self).await?
                 request.clone()
             ).await?;
 
@@ -455,7 +416,7 @@ impl<T: HttpClient> ConnectedClient<T> {
     ///   parts (modules).
     /// 
     /// - `message` should contain the message you want to send.
-    pub async fn send(&self, receiver_server: impl std::fmt::Display, receiver_public: PublicKey, channel: impl ToString, message: Message) -> Result<(), Error> {
+    pub async fn send(&self, receiver_server: impl AsRef<str>, receiver_public: PublicKey, channel: impl ToString, message: Message) -> Result<(), Error> {
         #[cfg(feature = "tracing")]
         tracing::debug!("Sending POST /api/v1/send request");
 
@@ -480,7 +441,7 @@ impl<T: HttpClient> ConnectedClient<T> {
 
         // Send request
         let response = self.http_client.post_request::<SendRequest, SendResponse>(
-            format!("http://{receiver_server}/api/v1/send"),
+            format!("{}/api/v1/send", resolve_uri(receiver_server, self).await?),
             request
         ).await?;
 
@@ -528,6 +489,7 @@ impl<T: HttpClient> ConnectedClient<T> {
         let proof_seed = request.0.proof_seed;
 
         // Send request
+        // We don't need to resolve our local server's address
         let response = self.http_client.post_request::<PollRequest, PollResponse>(
             format!("http://{}/api/v1/poll", &self.connected_server.address),
             request
