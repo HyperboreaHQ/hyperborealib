@@ -26,6 +26,7 @@ use std::str::FromStr;
 
 use crate::crypto::prelude::*;
 use crate::rest_api::prelude::*;
+use crate::http::HttpClient;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Address {
@@ -61,6 +62,29 @@ pub enum Address {
     /// 
     /// Stores unsupported value.
     Raw(String)
+}
+
+impl Address {
+    pub async fn resolve<T: HttpClient>(self, client: &ConnectedClientMiddleware<T>) -> Result<String, MiddlewareError> {
+        let address = match self {
+            Self::Hyperborea { public_key, client_type } => {
+                match client.lookup(public_key, client_type).await? {
+                    Some((_, server, _)) => format!("http://{}", server.address),
+
+                    None => return Err(MiddlewareError::RequestFailed {
+                        status: ResponseStatus::ClientNotFound,
+                        reason: String::from("Failed to lookup hyperborea client")
+                    })
+                }
+            }
+
+            Self::Http { address } => format!("http://{address}"),
+            Self::Https { address } => format!("https://{address}"),
+            Self::Raw(address) => address
+        };
+
+        Ok(address)
+    }
 }
 
 impl FromStr for Address {
@@ -145,6 +169,16 @@ impl FromStr for Address {
 /// This function calls `Address::from_str`.
 pub fn parse(uri: impl AsRef<str>) -> Result<Address, CryptographyError> {
     Address::from_str(uri.as_ref())
+}
+
+/// Resolve accessible address of the given URI.
+/// 
+/// This function first calls `Address::from_str`
+/// and then `Address::resolve` from it.
+pub async fn resolve<T>(uri: impl AsRef<str>, client: &ConnectedClientMiddleware<T>) -> Result<String, MiddlewareError>
+where T: HttpClient {
+    Address::from_str(uri.as_ref())?
+        .resolve(client).await
 }
 
 #[cfg(test)]
