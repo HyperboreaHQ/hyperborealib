@@ -11,6 +11,11 @@ pub struct UpnpPortForwarder {
 }
 
 impl UpnpPortForwarder {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     fn build_config(port: u16, protocol: PortMappingProtocol, duration: Duration) -> UpnpConfig {
         UpnpConfig {
             address: None,
