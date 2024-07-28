@@ -6,73 +6,48 @@ use crate::rest_api::prelude::*;
 mod request;
 mod response;
 
-pub use request::AnnounceRequestBody;
-pub use response::AnnounceResponseBody;
+pub use request::DisconnectRequestBody;
+pub use response::DisconnectResponseBody;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// `POST /api/v1/announce` request.
+/// `POST /api/v1/disconnect` request.
 /// 
-/// This request is sent to the `POST /api/v1/announce` to
-/// announce a server about either some another server or
-/// a (client, server) pair. It is used to help other network
-/// members to find and reach you.
+/// This request is sent to the `POST /api/v1/disconnect` to
+/// tell a server that you want to disconnect from it.
 /// 
 /// This request is highly recommended to be sent automatically
-/// in background to all the known servers after a period of time.
-pub struct AnnounceRequest(pub Request<AnnounceRequestBody>);
+/// when you close an application.
+pub struct DisconnectRequest(pub Request<DisconnectRequestBody>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// `POST /api/v1/announce` response.
-pub struct AnnounceResponse(pub Response<AnnounceResponseBody>);
+/// `POST /api/v1/disconnect` response.
+pub struct DisconnectResponse(pub Response<DisconnectResponseBody>);
 
-impl AnnounceRequest {
+impl DisconnectRequest {
     #[inline]
-    /// Craft new `POST /api/v1/announce` client request.
+    /// Craft new `POST /api/v1/disconnect` client request.
     /// 
     /// - `client_secret` must contain reference to the
     ///   client's secret key. It is used to sign the proof
     ///   and connection certificate to the server.
-    /// 
-    /// - `client` must contain information about the announcing client.
-    /// 
-    /// - `server` must contain information about the server to which
-    ///   the `client` is connected.
-    pub fn client(client_secret: &SecretKey, client: Client, server: Server) -> Self {
-        Self(Request::new(client_secret, AnnounceRequestBody::client(client, server)))
+    pub fn new(client_secret: &SecretKey) -> Self {
+        Self(Request::new(client_secret, DisconnectRequestBody::new()))
     }
 
     #[inline]
-    /// Craft new `POST /api/v1/announce` server request.
-    /// 
-    /// - `client_secret` must contain reference to the
-    ///   client's secret key. It is used to sign the proof
-    ///   and connection certificate to the server.
-    /// 
-    /// - `server` must contain information about the announcing server.
-    pub fn server(client_secret: &SecretKey, server: Server) -> Self {
-        Self(Request::new(client_secret, AnnounceRequestBody::server(server)))
-    }
-
     /// Validate the request.
     /// 
     /// Calls `validate()` function on the request's body
     /// and verifies that the provided connection certificate
     /// is signed for the specified server.
     pub fn validate(&self) -> Result<bool, ValidationError> {
-        let mut valid_cert = true;
-
-        // Validate that the client is connected to the server.
-        if let AnnounceRequestBody::Client { client, server } = &self.0.request {
-            valid_cert = client.certificate.validate(&client.public_key, &server.public_key)?;
-        }
-
-        Ok(valid_cert && self.0.validate()?)
+        self.0.validate()
     }
 }
 
-impl AsJson for AnnounceRequest {
+impl AsJson for DisconnectRequest {
     #[inline]
     fn to_json(&self) -> Result<Json, AsJsonError> {
         self.0.to_json()
@@ -84,7 +59,7 @@ impl AsJson for AnnounceRequest {
     }
 }
 
-impl AnnounceResponse {
+impl DisconnectResponse {
     /// Create successful `POST /api/v1/announce` response.
     /// 
     /// - `status` must contain status code of the response
@@ -103,7 +78,7 @@ impl AnnounceResponse {
     /// use hyperborealib::crypto::prelude::*;
     /// use hyperborealib::rest_api::prelude::*;
     /// 
-    /// let response = AnnounceResponse::success(
+    /// let response = DisconnectResponse::success(
     ///     ResponseStatus::Success,
     ///     &SecretKey::random(),
     ///     safe_random_u64_long() // Here must be the original request's proof seed
@@ -116,7 +91,7 @@ impl AnnounceResponse {
             status,
             server_secret.public_key(),
             proof,
-            AnnounceResponseBody::new()
+            DisconnectResponseBody::new()
         ))
     }
 
@@ -133,7 +108,7 @@ impl AnnounceResponse {
     /// use hyperborealib::crypto::prelude::*;
     /// use hyperborealib::rest_api::prelude::*;
     /// 
-    /// let response = AnnounceResponse::error(
+    /// let response = DisconnectResponse::error(
     ///     ResponseStatus::ServerError,
     ///     "Example error"
     /// );
@@ -151,7 +126,7 @@ impl AnnounceResponse {
     }
 }
 
-impl AsJson for AnnounceResponse {
+impl AsJson for DisconnectResponse {
     #[inline]
     fn to_json(&self) -> Result<Json, AsJsonError> {
         self.0.to_json()

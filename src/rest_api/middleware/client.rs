@@ -277,6 +277,47 @@ impl<T: HttpClient> ConnectedClient<T> {
         }
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
+    /// Disconnect from the remote server.
+    /// 
+    /// This method will perform `POST /api/v1/disconnect` request.
+    pub async fn disconnect(self) -> Result<Client<T>, Error> {
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Sending POST /api/v1/disconnect request");
+
+        // Prepare disconnect request
+        let request = DisconnectRequest::new(
+            self.driver.secret_key()
+        );
+
+        let proof_seed = request.0.proof_seed;
+
+        // Send request to resolved address
+        // We don't need to resolve our local server's address
+        let response = self.http_client.post_request::<DisconnectRequest, DisconnectResponse>(
+            format!("http://{}/api/v1/disconnect", &self.connected_server.address),
+            request
+        ).await?;
+
+        // Validate response
+        if !response.validate(proof_seed)? {
+            return Err(Error::InvalidProofSeedSignature);
+        }
+
+        // Check response status
+        if let Response::Error { status, reason, .. } = response.0 {
+            return Err(Error::RequestFailed {
+                status,
+                reason
+            });
+        }
+
+        Ok(Client {
+            http_client: self.http_client,
+            driver: self.driver
+        })
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(ret, skip_all, fields(
         server
     )))]
