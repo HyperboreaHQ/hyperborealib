@@ -265,6 +265,18 @@ impl<T: HttpClient> ConnectedClient<T> {
         )
     }
 
+    /// Get disconnected variant of the client middleware.
+    /// 
+    /// This method doesn't actually close the connection to the server.
+    /// It just constructs a copy of the original client from which
+    /// the current struct was made to perform a different set of methods.
+    pub fn disconnected(&self) -> Client<T> {
+        Client {
+            http_client: self.http_client.clone(),
+            driver: self.driver.clone()
+        }
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(ret, skip_all, fields(
         server
     )))]
