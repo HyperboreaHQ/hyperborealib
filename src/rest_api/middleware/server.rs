@@ -148,6 +148,52 @@ where
             }
         }).await;
 
+        http_server.post::<DisconnectRequest, DisconnectResponse, _>("/api/v1/disconnect", {
+            let driver = driver.clone();
+
+            |client_address, request: DisconnectRequest| async move {
+                #[cfg(feature = "tracing")]
+                tracing::trace!(?client_address, "POST /api/v1/disconnect");
+
+                // Validate incoming request
+                let validated = match request.validate() {
+                    Ok(validated) => validated,
+
+                    Err(err) => return DisconnectResponse::error(
+                        ResponseStatus::ServerError,
+                        format!("Failed to validate request: {err}")
+                    )
+                };
+
+                // Check if request is valid
+                if !validated {
+                    return DisconnectResponse::error(
+                        ResponseStatus::RequestValidationFailed,
+                        "Request validation failed"
+                    );
+                }
+
+                #[cfg(feature = "tracing")]
+                tracing::trace!(
+                    client_public = request.0.public_key.to_base64(),
+                    "POST /api/v1/disconnect: disconnecting client"
+                );
+
+                if let Err(err) = driver.router().disconnect(&request.0.public_key).await {
+                    return DisconnectResponse::error(
+                        ResponseStatus::ServerError,
+                        format!("Failed to disconnect client: {err}")
+                    );
+                }
+
+                DisconnectResponse::success(
+                    ResponseStatus::Success,
+                    &driver.params().secret_key,
+                    request.0.proof_seed
+                )
+            }
+        }).await;
+
         http_server.post::<AnnounceRequest, AnnounceResponse, _>("/api/v1/announce", {
             let driver = driver.clone();
 

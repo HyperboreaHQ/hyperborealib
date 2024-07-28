@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use serde_json::{json, Value as Json};
 
+use crate::crypto::prelude::*;
 use crate::rest_api::prelude::*;
+
 use crate::time::timestamp;
 
 use super::Router;
@@ -92,6 +94,21 @@ impl Router for GlobalTableRouter {
         tokio::fs::write(path, serde_json::to_vec(&server)?).await?;
 
         Ok(true)
+    }
+
+    async fn disconnect(&self, public_key: &PublicKey) -> Result<(), Self::Error> {
+        let public_key = public_key.to_base64();
+
+        // We're just deleting the record but could also mark them
+        // as unavailable. Right now I decided to delete them because:
+        // 1. It's faster and easier to implement
+        // 2. Current implementations generally ignore availability
+        //    flag thus changing it doesn't make a weather
+        let _ = tokio::fs::remove_file(self.storage_folder.join("local").join(&public_key)).await;
+        let _ = tokio::fs::remove_file(self.storage_folder.join("remote").join(&public_key)).await;
+        let _ = tokio::fs::remove_file(self.storage_folder.join("servers").join(&public_key)).await;
+
+        Ok(())
     }
 
     async fn local_clients(&self) -> Result<Vec<Client>, Self::Error> {

@@ -27,6 +27,13 @@ pub trait Router {
     /// This method will return whether the server was indexed.
     async fn index_server(&self, server: Server) -> Result<bool, Self::Error>;
 
+    /// Mark connected client or server as disconnected.
+    /// 
+    /// Depending on implementation this method can either
+    /// mark the record as `unavailable`, or remove it
+    /// completely.
+    async fn disconnect(&self, public_key: &PublicKey) -> Result<(), Self::Error>;
+
     /// Get list of all connected local clients.
     async fn local_clients(&self) -> Result<Vec<Client>, Self::Error>;
 
